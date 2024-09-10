@@ -6,8 +6,7 @@
 #include <any>
 #include <functional>
 
-namespace sdi {
-
+namespace simplistic { namespace di {
     namespace detail {
         // FNV-1a hash function at compile-time
         consteval uint32_t fnv1a_32(const char* s, std::size_t count) {
@@ -122,4 +121,5 @@ namespace sdi {
         std::unordered_map<uint32_t, std::any> mContainer;
         std::unordered_map<uint32_t, std::unique_ptr<detail::AnyBase>> mOwnershipsContainer;
     };
+}
 }

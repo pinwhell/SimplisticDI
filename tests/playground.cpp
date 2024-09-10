@@ -1,5 +1,7 @@
-#include <sdi/sdi.h>
+#include <simplistic/di.h>
 #include <iostream>
+
+namespace sdi = simplistic::di;
 
 class IConsoleLogger {
 public:

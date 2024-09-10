@@ -1,28 +1,29 @@
 cmake_minimum_required(VERSION 3.16)
-project(sdi)
-add_library(sdi INTERFACE)
-target_include_directories(sdi INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-target_compile_features(sdi INTERFACE cxx_std_20)
+project(simplistic-di)
+add_library(di INTERFACE)
+add_library(simplistic::di ALIAS di)
+target_include_directories(di INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_compile_features(di INTERFACE cxx_std_20)
 add_subdirectory(tests)
 
-install(TARGETS sdi
-        EXPORT sdi-targets
+install(TARGETS di
+        EXPORT simplistic-di-targets
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin)
 
-install(EXPORT sdi-targets
-        FILE sdi-targets.cmake
-        NAMESPACE sdi::
-        DESTINATION lib/cmake/sdi)
+install(EXPORT simplistic-di-targets
+        FILE simplistic-di-targets.cmake
+        NAMESPACE simplistic::
+        DESTINATION lib/cmake/simplistic)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION include)
 
-configure_file(cmake/sdi-config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/sdi-config.cmake
+configure_file(cmake/simplistic-di-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/simplistic-di-config.cmake
     @ONLY)
 
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/sdi-config.cmake
-    DESTINATION lib/cmake/sdi)
+    ${CMAKE_CURRENT_BINARY_DIR}/simplistic-di-config.cmake
+    DESTINATION lib/cmake/simplistic)

@@ -19,29 +19,31 @@ make install
 ```
 In Your CMakeLists.txt:
 ```cmake
-find_package(sdi REQUIRED)
-target_link_libraries(your_target PRIVATE sdi::sdi)
+find_package(simplistic-di REQUIRED)
+target_link_libraries(your_target PRIVATE simplistic::di)
 ```
 2. **Add as Subdirectory:**
 
 In Your CMakeLists.txt:
 ```cmake
-add_subdirectory(path/to/sdi)
-target_link_libraries(your_target PRIVATE sdi)
+add_subdirectory(path/to/simplistic-di)
+target_link_libraries(your_target PRIVATE simplistic::di)
 ```
 3. **Direct Header Inclusion:**
 
--   Simply download `sdi/sdi.h` and include it in your project:
+-   Simply download `simplistic/di.h` and include it in your project:
         
 ```cpp
-#include "path/to/sdi.hpp"
+#include "path/to/simplistic-di.h"
 ```
 
 **Quick Example:**
 
 ```cpp
-#include <sdi/sdi.h>
+#include <simplistic/di.h>
 #include <iostream>
+
+namespace sdi = simplistic::di;
 
 class IPrinter {
 public:
@@ -96,7 +98,9 @@ container.BindIface<IConsoleLogger>(&localObj); // No ownership, user manages li
 
 ```cpp
 #include <iostream>
-#include <sdi/sdi.h>
+#include <simplistic/di.h>
+
+namespace sdi = simplistic::di;
 
 class IPrinter {
 public:
@@ -152,7 +156,7 @@ In SimplisticDI:
 
 ```cpp
 {
-    sdi::Container container;
+    simplistic::di::Container container;
     container.Install<IPrinter>(std::make_unique<Printer>()); // Unique ownership
 
     // Container's destruction will automatically clean up the Printer object
