@@ -65,7 +65,7 @@ int main() {
     container.Install<IPrinter>(std::make_unique<Printer>());
 
     // Retrieve and use
-    auto printer = container.GetIface<IPrinter>();
+    auto printer = container.Get<IPrinter>();
     printer->Print("Hello, SimplisticDI!");
 
     return 0;
@@ -85,13 +85,12 @@ container.Install<IConsoleLogger>(std::move(uniqueObj)); // Takes ownership
 ```
 2. **Shared Ownership:** The container shares ownership using `std::shared_ptr`.
 ```cpp
-auto sharedObj = std::make_shared<ConsoleLogger>(2);
-container.SharedInstall(sharedObj); // Shares ownership
+container.Install(std::make_shared<ConsoleLogger>(2)); // Shares ownership
 ```
 3. **Non-Ownership Reference:** The container stores a raw pointer without taking ownership.
 ```cpp
 ConsoleLogger localObj(3);
-container.BindIface<IConsoleLogger>(&localObj); // No ownership, user manages lifetime
+container.Bind<IConsoleLogger>(&localObj); // No ownership, user manages lifetime
 ```
 
 **Compact Example:**
@@ -123,14 +122,14 @@ int main() {
     sdi::Container container;
     container
         .Install<IPrinter>(std::move(uniquePrinter))     // Unique ownership
-        .SharedInstall(sharedPrinter)                    // Shared ownership
-        .BindIface<IPrinter>(&localPrinter)              // No ownership, reference
-        .Bind(42)                                        // Bind value
-        .Bind(3.14f);                                    // Bind another value
+        .Install(sharedPrinter)                          // Shared ownership
+        .Bind<IPrinter>(&localPrinter)                   // No ownership, reference
+        .Install(42)                                     // Bind value
+        .Install(3.14f);                                 // Bind another value
 
-    container.GetIface<IPrinter>()->Print("Hello, DI!");
+    container.Get<IPrinter>()->Print("Hello, DI!");
 
-    std::cout << container.Get<int>() << " " << container.Get<float>() << std::endl;
+    std::cout << container.GetO<int>() << " " << container.GetO<float>() << std::endl;
 
     return 0;
 }
@@ -143,8 +142,8 @@ In SimplisticDI:
 
 1.  **Ownership Management:**
     
-    -   **Unique Ownership:** When a `std::unique_ptr` is bound, the container takes full ownership. The object is freed when the container is destroyed or if the unique pointer is replaced by another.
-    -   **Shared Ownership:** When a `std::shared_ptr` is bound, the container shares ownership with other parts of the program. The object remains valid as long as any `shared_ptr` references it, and is not replaced by another one.
+    -   **Unique Ownership:** When a `std::unique_ptr` is installed, the container takes full ownership. The object is freed when the container is destroyed or if the unique pointer is replaced by another.
+    -   **Shared Ownership:** When a `std::shared_ptr` is installed, the container shares ownership with other parts of the program. The object remains valid as long as any `shared_ptr` references it, and is not replaced by another one.
 2.  **Non-Ownership References:**
     
     -   **Raw Pointers:** When a raw pointer is bound, the container does not manage the object's lifecycle. The object must be managed and freed by the user. The container only stores the pointer.
