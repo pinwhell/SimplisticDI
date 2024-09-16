@@ -30,6 +30,12 @@ public:
     int mID;
 };
 
+struct Foo {
+    int x;
+    float y;
+    char c;
+};
+
 int main()
 {
     auto conLogger = std::make_unique<ConsoleLogger>(1);
@@ -37,20 +43,25 @@ int main()
     ConsoleLogger conLogger_(3);
     float x = 1.2f;
     int y = 10;
+    Foo f{ 1, 1.1f, 'Y' };
 
-    sdi::Container container; container
-        .Install<IConsoleLogger>(std::make_unique<ConsoleLogger>(4))    // Container Takes ownership of the unique_ptr!
-        .Install<IConsoleLogger>(std::move(conLogger))                  // Container Takes ownership of the unique_ptr!
-        .SharedInstall(conLoggerShared)                                 // Container Takes shared ownership with the shared_ptr!
-        .BindIface<IConsoleLogger>(&conLogger_)                         // Container just take a ref for the object, you manage ownership!
-        .Bind(x)                                                        // Container binds 'x' to int type!
-        .Bind(y)                                                        // Container binds 'y' to float type!
-        .GetIface<IConsoleLogger>()->Log("Hello Container!");           // Container Fetch Bound Interface & Usage!
+    sdi::Container container;
+    container
+        .Install<IConsoleLogger>(std::make_unique<ConsoleLogger>(4))    // Container takes ownership of this unique_ptr.
+        .Install<IConsoleLogger>(std::move(conLogger))                  // Container takes ownership of this unique_ptr.
+        .Install<IConsoleLogger>(conLoggerShared)                       // Container shares ownership with this shared_ptr.
+        .Bind<IConsoleLogger>(&conLogger_)                              // Container binds to this raw reference; ownership is managed outside the container.
+        .Install(x)                                                     // Container binds the value 'x' to the int type.
+        .Install(y)                                                     // Container binds the value 'y' to the float type.
+        .Install(f)                                                     // Container binds the value 'f' to the Foo type.
+        .Get<IConsoleLogger>()->Log("Hello Container!");                // Container fetches the bound IConsoleLogger instance and uses it.
 
-    std::cout << 
-        container.Get<int>()        // Container Fetch Bound value to 'int' type
-        << " " << 
-        container.Get<float>()      // Container Fetch Bound value to 'float' type
+    std::cout <<
+        container.GetO<int>()        // Container fetches the bound value of type 'int'.
+        << " " <<
+        container.GetO<float>()      // Container fetches the bound value of type 'float'.
+        << " " <<
+        container.GetO<Foo>().c      // Container fetches the bound value of type 'Foo' and accesses its 'c' member.
         << "\n";
 
     return 0;
