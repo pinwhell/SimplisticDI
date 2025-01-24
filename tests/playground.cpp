@@ -1,5 +1,6 @@
-#include <simplistic/di.h>
+//#include <simplistic/di.h>
 #include <iostream>
+#include "../include/simplistic/di.h"
 
 namespace sdi = simplistic::di;
 
@@ -39,7 +40,8 @@ struct Foo {
 int main()
 {
     auto conLogger = std::make_unique<ConsoleLogger>(1);
-    auto conLoggerShared = std::make_shared<ConsoleLogger>(2);
+    std::shared_ptr<IConsoleLogger> conLoggerShared 
+        = std::make_shared<ConsoleLogger>(2);
     ConsoleLogger conLogger_(3);
     float x = 1.2f;
     int y = 10;
@@ -55,6 +57,9 @@ int main()
         .Install(y)                                                     // Container binds the value 'y' to the float type.
         .Install(f)                                                     // Container binds the value 'f' to the Foo type.
         .Get<IConsoleLogger>()->Log("Hello Container!");                // Container fetches the bound IConsoleLogger instance and uses it.
+    container
+        .Install<IConsoleLogger>(conLoggerShared);                      // Reinstalling for ownership ejection test
+
 
     std::cout <<
         container.GetO<int>()        // Container fetches the bound value of type 'int'.
@@ -63,6 +68,10 @@ int main()
         << " " <<
         container.GetO<Foo>().c      // Container fetches the bound value of type 'Foo' and accesses its 'c' member.
         << "\n";
+
+    (conLoggerShared = container
+        .EjectShared<IConsoleLogger>())
+        ->Log("Hello Ejection!");
 
     return 0;
 }

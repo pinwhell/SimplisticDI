@@ -1,4 +1,4 @@
-#include <simplistic/di.h>
+#include "../include/simplistic/di.h"
 #include <cassert>
 
 using namespace simplistic::di;

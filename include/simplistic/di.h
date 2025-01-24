@@ -45,7 +45,6 @@ namespace simplistic {
             class AnyHolder : public AnyBase {
             public:
                 explicit AnyHolder(T& value) : value_(std::move(value)) {}
-            private:
                 T value_;
             };
 
@@ -59,7 +58,7 @@ namespace simplistic {
 
             // Helper variable template (C++14 and later)
             template<typename T>
-            constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
+            constexpr bool is_unique_ptr_v = is_unique_ptr<std::decay_t<T>>::value;
 
             // Primary template for general types
             template<typename T>
@@ -71,11 +70,11 @@ namespace simplistic {
 
             // Helper variable template (C++14 and later)
             template<typename T>
-            constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
+            constexpr bool is_shared_ptr_v = is_shared_ptr<std::decay_t<T>>::value;
 
             // Combined trait to check if a type is any kind of smart pointer
-            template<typename T>
-            struct is_smart_ptr : std::conditional_t<is_unique_ptr_v<T> || is_shared_ptr_v<T>, std::true_type, std::false_type> {};
+            template<typename T, typename TDecay = std::decay_t<T>>
+            struct is_smart_ptr : std::conditional_t<is_unique_ptr_v<TDecay> || is_shared_ptr_v<TDecay>, std::true_type, std::false_type> {};
 
             // Helper variable template (C++14 and later)
             template<typename T>
@@ -89,6 +88,7 @@ namespace simplistic {
             virtual void InstallAny(uint32_t hash, std::unique_ptr<detail::AnyBase> any) = 0;
             virtual void BindPtr(uint32_t hash, void* binding) = 0;
             virtual bool GetPtr(uint32_t hash, void*& outBinding) const = 0;
+            virtual std::unique_ptr<detail::AnyBase> EjectAny(uint32_t hash) = 0;
 
             template<typename T>
             inline std::enable_if_t<std::is_pointer_v<T>, IContainer&> Bind(T instance)
@@ -130,26 +130,26 @@ namespace simplistic {
             template<
                 typename TIface,
                 typename TSmartPtr,
-                typename TSmartPtrNormal = std::remove_reference_t<std::remove_const_t<TSmartPtr>>,
-                typename TElemType = TSmartPtrNormal::element_type
+                typename TSmartPtrDcay = std::decay_t<TSmartPtr>,
+                typename TElemType = TSmartPtrDcay::element_type
             >
             inline std::enable_if_t<
-                detail::is_smart_ptr_v<TSmartPtrNormal>&&
+                detail::is_smart_ptr_v<TSmartPtr>&&
                 std::is_rvalue_reference_v<TSmartPtr>, IContainer&
             > Install(TSmartPtr serviceResource)
             {
-                if constexpr (detail::is_unique_ptr_v<TSmartPtrNormal>)
+                if constexpr (detail::is_unique_ptr_v<TSmartPtr>)
                 {
                     auto& service = serviceResource;
                     Bind<TIface>(service.get());
-                    InstallAny(detail::type_hash<TIface>(), std::make_unique<detail::AnyHolder<TSmartPtrNormal>>(
+                    InstallAny(detail::type_hash<TIface>(), std::make_unique<detail::AnyHolder<TSmartPtrDcay>>(
                         service
                     ));
                 }
-                else if constexpr (detail::is_shared_ptr_v<TSmartPtrNormal>)
+                else if constexpr (detail::is_shared_ptr_v<TSmartPtr>)
                 {
                     Bind<TIface>(serviceResource.get());
-                    InstallAny(detail::type_hash<TIface>(), std::make_unique<detail::AnyHolder<TSmartPtrNormal>>(
+                    InstallAny(detail::type_hash<TIface>(), std::make_unique<detail::AnyHolder<TSmartPtrDcay>>(
                         serviceResource
                     ));
                 }
@@ -158,11 +158,11 @@ namespace simplistic {
             }
 
             template<typename TIface, typename TSmartPtr,
-                typename TSmartPtrNormal = std::remove_reference_t<std::remove_const_t<TSmartPtr>>,
-                typename TElemType = TSmartPtrNormal::element_type
+                typename TSmartPtrDcay = std::decay_t<TSmartPtr>,
+                typename TElemType = TSmartPtrDcay::element_type
             >
             inline std::enable_if_t<
-                detail::is_smart_ptr_v<TSmartPtrNormal> &&
+                detail::is_smart_ptr_v<TSmartPtr> &&
                 !std::is_rvalue_reference_v<TSmartPtr>, IContainer&> Install(TSmartPtr serviceResource)
             {
                 return Install<TIface, TSmartPtr&&>(std::move(serviceResource));
@@ -170,14 +170,38 @@ namespace simplistic {
 
             template<
                 typename TObject,
-                typename TObjectNormal = std::remove_reference_t<std::remove_const_t<std::remove_pointer_t<TObject>>> /*Smart Pointer Positinoal Place*/
+                typename TObjectDcay = std::remove_reference_t<std::remove_const_t<std::remove_pointer_t<TObject>>> /*Smart Pointer Positinoal Place*/
             >
             inline std::enable_if_t<
-                !detail::is_smart_ptr_v<TObjectNormal /*Smart Pointer Positinoal Place*/ >,
+                !detail::is_smart_ptr_v<TObject /*Smart Pointer Positinoal Place*/ >,
                 IContainer&
             > Install(TObject obj)
             {
-                return Install<TObjectNormal>(std::make_unique<TObjectNormal>(obj));
+                return Install<TObjectDcay>(std::make_unique<TObjectDcay>(obj));
+            }
+
+
+            template<typename TIface>
+            std::unique_ptr<TIface> Eject()
+            {
+                return EjectT<std::unique_ptr<std::decay_t<TIface>>>();
+            }
+
+            template<typename TIface>
+            std::shared_ptr<TIface> EjectShared()
+            {
+                return EjectT<std::shared_ptr<std::decay_t<TIface>>>();
+            }
+
+        private:
+            template<typename TSmartPtrHolder>
+            TSmartPtrHolder EjectT()
+            {
+                auto holderBase = EjectAny(detail::type_hash<typename TSmartPtrHolder::element_type>());
+                if (!holderBase) return {};
+                detail::AnyHolder<TSmartPtrHolder>& holder = *(detail::AnyHolder<TSmartPtrHolder>*)holderBase.get(); /*Risky Cast*/
+                auto ownershipOut = std::move(holder.value_);
+                return ownershipOut;
             }
         };
 
@@ -207,6 +231,20 @@ namespace simplistic {
                     return false;
                 outBinding = it->second;
                 return true;
+            }
+
+            inline std::unique_ptr<detail::AnyBase> EjectAny(uint32_t hash)
+            {
+                auto it = mAdquisitionsContainer.find(hash);
+                if (it == mAdquisitionsContainer.end()) return {};
+
+                // Transfer ownership of the unique_ptr
+                auto result = std::move(it->second);
+
+                // Remove the element from the container
+                mAdquisitionsContainer.erase(it);
+
+                return result;
             }
 
             inline Container& operator=(Container&& other) noexcept
@@ -259,6 +297,14 @@ namespace simplistic {
                     return true;
 
                 return mOutterScope->GetPtr(hash, outBinding);
+            }
+
+            inline std::unique_ptr<detail::AnyBase> EjectAny(uint32_t hash) override
+            {
+                if (auto any = mScope.EjectAny(hash))
+                    return any;
+
+                return mOutterScope->EjectAny(hash);
             }
 
             Container mScope;
